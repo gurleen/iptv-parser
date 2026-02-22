@@ -4,7 +4,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 import re
+from time import perf_counter
 import xml.etree.ElementTree as ET
+
+from loguru import logger
+from tqdm import tqdm
 
 
 _XMLTV_DATETIME_RE = re.compile(
@@ -43,13 +47,30 @@ class XMLTVParser:
     """
 
     def parse(self, file_path: str | Path) -> list[XMLTVProgram]:
+        parse_start = perf_counter()
+        source = Path(file_path)
+        logger.info("Starting XMLTV parse: {}", source)
+
         tree = ET.parse(str(file_path))
         root = tree.getroot()
 
         if root.tag != "tv":
             raise ValueError("Expected root element <tv> in XMLTV file.")
 
-        return [self._parse_programme(el) for el in root.findall("programme")]
+        programme_elements = root.findall("programme")
+        programs = [
+            self._parse_programme(el)
+            for el in tqdm(programme_elements, desc="Parsing XMLTV programmes", unit="programme")
+        ]
+
+        elapsed = perf_counter() - parse_start
+        logger.info(
+            "Finished XMLTV parse: {} programmes from {} in {:.3f}s",
+            len(programs),
+            source,
+            elapsed,
+        )
+        return programs
 
     def _parse_programme(self, element: ET.Element) -> XMLTVProgram:
         start_raw = element.get("start")

@@ -1,9 +1,11 @@
 from enum import Enum
 from dataclasses import asdict
 from pathlib import Path
+from time import perf_counter
 from typing import Optional
 
 import typer
+from loguru import logger
 from m3u_parser import M3uParser
 from rich import print
 import polars as pl
@@ -66,6 +68,14 @@ def main():
 
 @app.command()
 def parse_m3u(file: Path, output_format: OutputFormat, output_file: Path):
+    started = perf_counter()
+    logger.info(
+        "Running parse-m3u with file={}, output_format={}, output_file={}",
+        file,
+        output_format.value,
+        output_file,
+    )
+
     parser = M3uParser()
     parser.parse_m3u(str(file), check_live=False)
     channels = parser.get_list()
@@ -81,17 +91,29 @@ def parse_m3u(file: Path, output_format: OutputFormat, output_file: Path):
     )
 
     write_df_as(df, output_format, output_file)
+    elapsed = perf_counter() - started
+    logger.info("parse-m3u completed in {:.3f}s", elapsed)
     print(f"Wrote {len(df)} channels to {output_file}.")
 
 
 @app.command()
 def parse_xmltv(file: Path, output_format: OutputFormat, output_file: Path):
+    started = perf_counter()
+    logger.info(
+        "Running parse-xmltv with file={}, output_format={}, output_file={}",
+        file,
+        output_format.value,
+        output_file,
+    )
+
     parser = XMLTVParser()
     programs = parser.parse(file)
     rows = [asdict(program) for program in programs]
 
     df = pl.DataFrame(rows)
     write_df_as(df, output_format, output_file)
+    elapsed = perf_counter() - started
+    logger.info("parse-xmltv completed in {:.3f}s", elapsed)
     print(f"Wrote {len(df)} programs to {output_file}.")
 
 
