@@ -5,6 +5,7 @@ from pathlib import Path
 from time import perf_counter
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 import polars as pl
 from pydantic import BaseModel
@@ -37,6 +38,14 @@ class ProgramResponse(BaseModel):
 
 
 app = FastAPI(title="IPTV Parser API", version="0.1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def _ensure_inputs_exist() -> None:
