@@ -5,9 +5,12 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "fastapi[standard]>=0.131.0",
     "loguru>=0.7.3",
     "m3u-parser>=0.4.2",
     "polars>=1.38.1",
+    "pytz>=2025.2",
     "tqdm>=4.67.3",
     "typer>=0.24.1",
+    "tzdata>=2025.3",
 ]
