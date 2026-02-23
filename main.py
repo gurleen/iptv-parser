@@ -21,16 +21,6 @@ class OutputFormat(str, Enum):
     parquet = "parquet"
 
 
-KEEP_CATEGORIES = [
-    "USA SPORTS",
-    "INTERNATIONAL SPORTS",
-    "NEWS",
-    "USA LOCALS",
-    "4K (UHD)",
-    "USA NETWORKS",
-]
-
-
 def write_df_as(
     df: pl.DataFrame, output_format: OutputFormat, output_file: Optional[Path] = None
 ):
@@ -86,8 +76,6 @@ def parse_m3u(file: Path, output_format: OutputFormat, output_file: Path):
     df = (
         pl.DataFrame(channels)
         .drop("tvg", "country", "language")
-        .filter(pl.col("category").is_in(KEEP_CATEGORIES))
-        .pipe(apply_filter_to_category, "USA LOCALS", name_contains("Philadelphia"))
     )
 
     write_df_as(df, output_format, output_file)
