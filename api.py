@@ -27,6 +27,8 @@ class ChannelResponse(BaseModel):
     url: str | None
     category: str | None
     guide_id: str | None
+    current_program_name: str | None
+    current_program_end: str | None
 
 
 class ProgramResponse(BaseModel):
@@ -86,11 +88,31 @@ def get_categories() -> list[CategoryResponse]:
 def get_channels_by_category(category: str) -> list[ChannelResponse]:
     _ensure_inputs_exist()
     started = perf_counter()
+    now_utc = datetime.now(pytz.UTC)
+
+    current_programs = (
+        pl.scan_parquet(EPG_PARQUET)
+        .filter(
+            pl.col("start_dt").le(pl.lit(now_utc)),
+            pl.col("stop_dt").gt(pl.lit(now_utc)),
+        )
+        .sort(["channel", "start_dt"], descending=[False, True])
+        .unique(subset=["channel"], keep="first")
+        .with_columns(pl.col("stop_dt").dt.convert_time_zone("America/New_York"))
+        .select(
+            [
+                pl.col("channel").alias("guide_id"),
+                pl.col("title").alias("current_program_name"),
+                pl.col("stop_dt").cast(pl.String).alias("current_program_end"),
+            ]
+        )
+    )
 
     channels_df = (
         pl.scan_parquet(CHANNELS_PARQUET)
         .filter(pl.col("category") == category)
         .select(["name", "logo", "url", "category", "guide_id"])
+        .join(current_programs, on="guide_id", how="left")
         .sort("name")
         .collect()
     )
