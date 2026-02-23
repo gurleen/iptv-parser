@@ -166,7 +166,7 @@ def parse_xmltv(file: Path, output_format: OutputFormat, output_file: Path):
         temp_csv = output_file.with_suffix(f"{output_file.suffix}.tmp.csv")
         try:
             program_count = _write_programs_csv(parser, file, temp_csv)
-            pl.scan_csv(str(temp_csv), try_parse_dates=True).sink_parquet(str(output_file))
+            pl.scan_csv(str(temp_csv), try_parse_dates=True).sink_parquet(str(output_file), engine="streaming")
         finally:
             if temp_csv.exists():
                 temp_csv.unlink()
