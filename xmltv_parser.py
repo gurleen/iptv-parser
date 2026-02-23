@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 import re
 from time import perf_counter
+from typing import Iterator
 import xml.etree.ElementTree as ET
 
 from loguru import logger
@@ -47,30 +48,39 @@ class XMLTVParser:
     """
 
     def parse(self, file_path: str | Path) -> list[XMLTVProgram]:
+        return list(self.iter_parse(file_path))
+
+    def iter_parse(self, file_path: str | Path) -> Iterator[XMLTVProgram]:
         parse_start = perf_counter()
         source = Path(file_path)
         logger.info("Starting XMLTV parse: {}", source)
 
-        tree = ET.parse(str(file_path))
-        root = tree.getroot()
+        context = ET.iterparse(str(file_path), events=("start", "end"))
+        root: ET.Element | None = None
+        processed = 0
 
-        if root.tag != "tv":
-            raise ValueError("Expected root element <tv> in XMLTV file.")
+        with tqdm(desc="Parsing XMLTV programmes", unit="programme") as progress:
+            for event, element in context:
+                if root is None and event == "start":
+                    if element.tag != "tv":
+                        raise ValueError("Expected root element <tv> in XMLTV file.")
+                    root = element
 
-        programme_elements = root.findall("programme")
-        programs = [
-            self._parse_programme(el)
-            for el in tqdm(programme_elements, desc="Parsing XMLTV programmes", unit="programme")
-        ]
+                if event == "end" and element.tag == "programme":
+                    processed += 1
+                    progress.update(1)
+                    yield self._parse_programme(element)
+                    element.clear()
+                    if root is not None:
+                        root.clear()
 
         elapsed = perf_counter() - parse_start
         logger.info(
             "Finished XMLTV parse: {} programmes from {} in {:.3f}s",
-            len(programs),
+            processed,
             source,
             elapsed,
         )
-        return programs
 
     def _parse_programme(self, element: ET.Element) -> XMLTVProgram:
         start_raw = element.get("start")
